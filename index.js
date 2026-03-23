@@ -180,7 +180,5 @@ app.get("/predictions/high", async (req, res) => {
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log("🚀 API rodando");
-});
-  console.log("🚀 API rodando em http://localhost:3000");
+  console.log("🚀 API rodando na porta", PORT);
 });
