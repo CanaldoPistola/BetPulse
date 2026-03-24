@@ -8,7 +8,7 @@ console.log("INICIANDO SCRIPT...");
 
 // 🔐 Supabase
 const SUPABASE_URL = "https://unjogytlwbafnqotgbei.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVuam9neXRsd2JhZm5xb3RnYmVpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3Mzk1MDAyOCwiZXhwIjoyMDg5NTI2MDI4fQ.e2oFAxrp4wxa6NGAx2Cdf87I3PxXAzzyJpZ30kPvvys"; 
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVuam9neXRsd2JhZm5xb3RnYmVpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3Mzk1MDAyOCwiZXhwIjoyMDg5NTI2MDI4fQ.e2oFAxrp4wxa6NGAx2Cdf87I3PxXAzzyJpZ30kPvvys"; // depois vamos mover pra ENV
 
 // ⚽ API Football
 const API_KEY = "1a896aad078a4eec7ab7121281bcd5ec";
@@ -16,15 +16,17 @@ const API_KEY = "1a896aad078a4eec7ab7121281bcd5ec";
 // ===================== CLIENT =====================
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// ===================== DATA =====================
-const today = new Date().toISOString().split("T")[0];
-
 // ===================== EXPRESS =====================
 const app = express();
 
-// ===================== BUSCAR JOGOS =====================
+// ===================== DATA =====================
+const today = new Date().toISOString().split("T")[0];
+
+// ===================== FUNÇÃO JOGOS =====================
 async function fetchAndInsertGames() {
   try {
+    console.log("📥 BUSCANDO JOGOS:", today);
+
     const response = await axios.get(
       `https://v3.football.api-sports.io/fixtures?date=${today}`,
       {
@@ -36,6 +38,11 @@ async function fetchAndInsertGames() {
 
     const games = response.data.response;
 
+    if (!games || games.length === 0) {
+      console.log("⚠️ Nenhum jogo encontrado");
+      return;
+    }
+
     for (let game of games) {
       const gameData = {
         api_id: game.fixture.id,
@@ -46,53 +53,79 @@ async function fetchAndInsertGames() {
         status: game.fixture.status.short,
       };
 
-      await supabase
+      const { error } = await supabase
         .from("games")
         .upsert([gameData], { onConflict: "api_id" });
+
+      if (error) console.error(error);
     }
 
     console.log("✅ Jogos atualizados");
-  } catch (error) {
-    console.log("Erro:", error.message);
+  } catch (err) {
+    console.log("Erro:", err.message);
   }
 }
 
-// ===================== PALPITES =====================
+// ===================== FUNÇÃO PALPITES =====================
 async function generatePredictions() {
-  const { data: games } = await supabase
+  console.log("🤖 GERANDO PALPITES");
+
+  const { data: games, error } = await supabase
     .from("games")
     .select("*")
     .limit(20);
 
-  for (let game of games || []) {
-    const probability = Math.random() * 0.2 + 0.6;
+  if (error || !games) return;
 
-    await supabase.from("predictions").insert([
-      {
-        game_id: game.id,
-        market: "BTTS",
-        probability,
-        odds: 1.7,
-        confidence: probability > 0.7 ? "high" : "medium",
-        is_premium: probability > 0.72,
-      },
-    ]);
+  for (let game of games) {
+    const { data: existing } = await supabase
+      .from("predictions")
+      .select("id")
+      .eq("game_id", game.id)
+      .maybeSingle();
+
+    if (existing) continue;
+
+    const probability = Math.random() * (0.8 - 0.6) + 0.6;
+
+    const prediction = {
+      game_id: game.id,
+      market: "BTTS",
+      probability,
+      odds: 1.7 + Math.random() * 0.5,
+      confidence: probability > 0.7 ? "high" : "medium",
+      is_premium: probability > 0.72,
+    };
+
+    await supabase.from("predictions").insert([prediction]);
   }
 
-  console.log("🔥 Palpites gerados");
+  console.log("🔥 PALPITES FINALIZADOS");
 }
 
 // ===================== ROTAS =====================
 app.get("/games", async (req, res) => {
-  const { data } = await supabase.from("games").select("*");
+  const { data, error } = await supabase.from("games").select("*").limit(50);
+  if (error) return res.status(500).json(error);
   res.json(data);
 });
 
 app.get("/predictions", async (req, res) => {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("predictions")
     .select("*, games(*)");
 
+  if (error) return res.status(500).json(error);
+  res.json(data);
+});
+
+app.get("/predictions/high", async (req, res) => {
+  const { data, error } = await supabase
+    .from("predictions")
+    .select("*, games(*)")
+    .gte("probability", 0.7);
+
+  if (error) return res.status(500).json(error);
   res.json(data);
 });
 
@@ -108,5 +141,5 @@ start();
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log("🚀 Rodando na porta", PORT);
+  console.log(`🚀 API rodando na porta ${PORT}`);
 });
