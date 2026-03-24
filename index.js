@@ -79,10 +79,13 @@ async function generatePredictions() {
 
   for (let game of games) {
     const { data: existing } = await supabase
-      .from("predictions")
-      .select("id")
-      .eq("game_id", game.id)
-      .maybeSingle();
+  .from("predictions")
+  .select("id")
+  .eq("game_id", game.id);
+
+if (existing && existing.length > 0) {
+  continue;
+}
 
     if (existing) continue;
 
@@ -113,17 +116,20 @@ app.get("/games", async (req, res) => {
 app.get("/predictions", async (req, res) => {
   const { data, error } = await supabase
     .from("predictions")
-    .select("*, games(*)");
+    .select("*, games(*)")
+    .order("probability", { ascending: false });
 
   if (error) return res.status(500).json(error);
+
   res.json(data);
 });
 
 app.get("/predictions/high", async (req, res) => {
   const { data, error } = await supabase
     .from("predictions")
-    .select("*, games(*)")
-    .gte("probability", 0.7);
+   .select("*, games(*)")
+.gte("probability", 0.7)
+.order("probability", { ascending: false });
 
   if (error) return res.status(500).json(error);
   res.json(data);
