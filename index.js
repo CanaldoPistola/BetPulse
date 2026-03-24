@@ -132,7 +132,7 @@ const prediction = {
   is_premium
 };
 
-    await supabase.from("predictions").insert([prediction]);
+    await supabase.from("predictions").upsert([prediction], { onConflict: ["game_id", "market"] })
   }
 
   console.log("🔥 PALPITES FINALIZADOS");
