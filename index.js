@@ -89,16 +89,41 @@ if (existing && existing.length > 0) {
 
     if (existing) continue;
 
-    const probability = Math.random() * (0.8 - 0.6) + 0.6;
+   // 🎯 Simula nível de gols do jogo
+const goalTrend = Math.random(); // 0 a 1
 
-    const prediction = {
-      game_id: game.id,
-      market: "BTTS",
-      probability,
-      odds: 1.7 + Math.random() * 0.5,
-      confidence: probability > 0.7 ? "high" : "medium",
-      is_premium: probability > 0.72,
-    };
+let market;
+let probability;
+
+// 🔥 DECISÃO INTELIGENTE
+if (goalTrend > 0.65) {
+  market = "OVER_2.5";
+  probability = 0.7 + Math.random() * 0.2;
+} else if (goalTrend < 0.35) {
+  market = "UNDER_2.5";
+  probability = 0.65 + Math.random() * 0.15;
+} else {
+  market = "BTTS";
+  probability = 0.6 + Math.random() * 0.2;
+}
+
+// 💰 odds baseadas no risco
+const odds = 1.6 + (1 - probability);
+
+// 🧠 confiança
+const confidence = probability > 0.72 ? "high" : "medium";
+
+// 🔐 premium
+const is_premium = probability > 0.75;
+
+const prediction = {
+  game_id: game.id,
+  market,
+  probability,
+  odds,
+  confidence,
+  is_premium
+};
 
     await supabase.from("predictions").insert([prediction]);
   }
