@@ -81,7 +81,14 @@ async function generatePredictions() {
     const { data: existing } = await supabase
   .from("predictions")
   .select("id")
-  .eq("game_id", game.id);
+  .eq("game_id", game.id)
+  .eq("market", "BTTS")
+  .limit(1);
+
+if (existing && existing.length > 0) {
+  console.log("⚠️ Já existe:", game.home_team, "vs", game.away_team);
+  continue;
+}
 
 if (existing && existing.length > 0) {
   continue;
