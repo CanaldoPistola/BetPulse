@@ -8,7 +8,7 @@ console.log("INICIANDO SCRIPT...");
 
 // 🔐 Supabase
 const SUPABASE_URL = "https://unjogytlwbafnqotgbei.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVuam9neXRsd2JhZm5xb3RnYmVpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3Mzk1MDAyOCwiZXhwIjoyMDg5NTI2MDI4fQ.e2oFAxrp4wxa6NGAx2Cdf87I3PxXAzzyJpZ30kPvvys"; // ⚠️ RECOMENDO mover pra ENV depois
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVuam9neXRsd2JhZm5xb3RnYmVpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3Mzk1MDAyOCwiZXhwIjoyMDg5NTI2MDI4fQ.e2oFAxrp4wxa6NGAx2Cdf87I3PxXAzzyJpZ30kPvvys";
 
 // ⚽ API Football
 const API_KEY = "1a896aad078a4eec7ab7121281bcd5ec";
@@ -28,7 +28,7 @@ async function fetchAndInsertGames() {
     console.log("📥 BUSCANDO JOGOS:", today);
 
     const response = await axios.get(
-      `https://v3.football.api-sports.io/fixtures?date=${today}`,
+      https://v3.football.api-sports.io/fixtures?date=${today},
       {
         headers: {
           "x-apisports-key": API_KEY,
@@ -71,17 +71,15 @@ async function generatePredictions() {
   console.log("🤖 GERANDO PALPITES");
 
   const { data: games, error } = await supabase
-.from("games")
-.select("*")
-.eq("status", "NS") // somente jogos não iniciados
-.order("match_date", { ascending: true })
-.limit(20);
+    .from("games")
+    .select("*")
+    .eq("status", "NS")
+    .order("match_date", { ascending: true })
+    .limit(20);
 
   if (error || !games) return;
 
   for (let game of games) {
-
-    // 🔥 EVITA DUPLICAÇÃO (game + market)
     const { data: existing } = await supabase
       .from("predictions")
       .select("id")
@@ -93,7 +91,6 @@ async function generatePredictions() {
       continue;
     }
 
-    // 🎯 Simulação
     const goalTrend = Math.random();
 
     let market;
@@ -139,64 +136,75 @@ async function generatePredictions() {
 app.get("/predictions", async (req, res) => {
   const { data, error } = await supabase
     .from("predictions")
-    .select("*, games(*)")
-    .eq("games.status", "NS") // 🔥 AQUI TAMBÉM
+    .select(", games()")
     .order("probability", { ascending: false });
 
   if (error) return res.status(500).json(error);
-
   res.json(data);
 });
 
 // FREE
 app.get("/predictions/free", async (req, res) => {
-  const today = new Date().toISOString().split("T")[0];
-
-  const { data, error } = await supabase
-    .from("predictions")
-    .select("*, games(*)")
-    .eq("is_premium", false)
-    .gte("probability", 0.65)
-    .gte("games.match_date", today) // 🔥 AQUI A MAGIA
-    .order("probability", { ascending: false })
-    .limit(5);
-
-  if (error) return res.status(500).json(error);
-
-  res.json(data);
-});
-
-// VIP (PROTEGIDO)
-app.get("/predictions/vip", async (req, res) => {
-  const token = req.headers.authorization || req.query.token;
-
-  const VIP_CODE = "BETPULSE2026";
-
-  if (token !== VIP_CODE) {
-    return res.status(403).json({ error: "Acesso negado" });
-  }
+  const now = new Date().toISOString();
 
   const { data, error } = await supabase
     .from("predictions")
     .select(", games()")
-    .eq("is_premium", true)
-    .order("probability", { ascending: false });
+    .eq("is_premium", false)
+    .gte("probability", 0.65)
+    .gte("games.match_date", now)
+    .order("probability", { ascending: false })
+    .limit(5);
 
   if (error) return res.status(500).json(error);
-
   res.json(data);
+});
+
+// VIP
+app.get("/predictions/vip", async (req, res) => {
+  try {
+    const token = (req.headers.authorization || req.query.token || "")
+      .toString()
+      .trim()
+      .toUpperCase();
+
+    const VIP_CODE = "BETPULSE2026";
+
+    console.log("🔐 Token recebido:", token);
+
+    if (token !== VIP_CODE) {
+      return res.status(403).json({ error: "Acesso negado" });
+    }
+
+    const { data, error } = await supabase
+      .from("predictions")
+      .select(", games()")
+      .eq("is_premium", true)
+      .order("probability", { ascending: false });
+
+    if (error) return res.status(500).json(error);
+
+    res.json(data);
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Erro interno" });
+  }
+});
 
 // ALTA PROBABILIDADE
 app.get("/predictions/high", async (req, res) => {
   const { data, error } = await supabase
     .from("predictions")
-    .select("*, games(*)")
+    .select(", games()")
     .gte("probability", 0.7)
     .order("probability", { ascending: false });
 
   if (error) return res.status(500).json(error);
   res.json(data);
 });
+
+// DEBUG VIP
 app.get("/test-vip", (req, res) => {
   const token = req.headers.authorization;
   res.json({ recebido: token });
@@ -225,5 +233,5 @@ start();
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log(`🚀 API rodando na porta ${PORT}`);
+  console.log(🚀 API rodando na porta ${PORT});
 });
