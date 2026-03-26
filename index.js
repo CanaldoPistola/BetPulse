@@ -168,22 +168,23 @@ app.get("/predictions/free", async (req, res) => {
 
 // VIP (PROTEGIDO)
 app.get("/predictions/vip", async (req, res) => {
-  const token = req.headers.authorization;
+  const token = req.headers.authorization || req.query.token;
 
-  if (token !== "VIP_LIBERADO") {
+  const VIP_CODE = "BETPULSE2026";
+
+  if (token !== VIP_CODE) {
     return res.status(403).json({ error: "Acesso negado" });
   }
 
   const { data, error } = await supabase
     .from("predictions")
-    .select("*, games(*)")
+    .select(", games()")
     .eq("is_premium", true)
     .order("probability", { ascending: false });
 
   if (error) return res.status(500).json(error);
 
   res.json(data);
-});
 
 // ALTA PROBABILIDADE
 app.get("/predictions/high", async (req, res) => {
@@ -195,6 +196,10 @@ app.get("/predictions/high", async (req, res) => {
 
   if (error) return res.status(500).json(error);
   res.json(data);
+});
+app.get("/test-vip", (req, res) => {
+  const token = req.headers.authorization;
+  res.json({ recebido: token });
 });
 
 // JOGOS
