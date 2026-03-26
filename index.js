@@ -71,9 +71,11 @@ async function generatePredictions() {
   console.log("🤖 GERANDO PALPITES");
 
   const { data: games, error } = await supabase
-    .from("games")
-    .select("*")
-    .limit(20);
+.from("games")
+.select("*")
+.eq("status", "NS") // somente jogos não iniciados
+.order("match_date", { ascending: true })
+.limit(20);
 
   if (error || !games) return;
 
@@ -138,19 +140,24 @@ app.get("/predictions", async (req, res) => {
   const { data, error } = await supabase
     .from("predictions")
     .select("*, games(*)")
+    .eq("games.status", "NS") // 🔥 AQUI TAMBÉM
     .order("probability", { ascending: false });
 
   if (error) return res.status(500).json(error);
+
   res.json(data);
 });
 
 // FREE
 app.get("/predictions/free", async (req, res) => {
+  const today = new Date().toISOString().split("T")[0];
+
   const { data, error } = await supabase
     .from("predictions")
     .select("*, games(*)")
     .eq("is_premium", false)
     .gte("probability", 0.65)
+    .gte("games.match_date", today) // 🔥 AQUI A MAGIA
     .order("probability", { ascending: false })
     .limit(5);
 
