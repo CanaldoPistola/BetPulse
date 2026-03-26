@@ -6,12 +6,10 @@ const express = require("express");
 // ===================== CONFIG =====================
 console.log("INICIANDO SCRIPT...");
 
-// 🔐 Supabase
-const SUPABASE_URL = "https://unjogytlwbafnqotgbei.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVuam9neXRsd2JhZm5xb3RnYmVpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3Mzk1MDAyOCwiZXhwIjoyMDg5NTI2MDI4fQ.e2oFAxrp4wxa6NGAx2Cdf87I3PxXAzzyJpZ30kPvvys";
-
-// ⚽ API Football
-const API_KEY = "1a896aad078a4eec7ab7121281bcd5ec";
+// 🔐 ENV (OBRIGATÓRIO NO RENDER)
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_KEY;
+const API_KEY = process.env.API_KEY;
 
 // ===================== CLIENT =====================
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -27,14 +25,14 @@ async function fetchAndInsertGames() {
   try {
     console.log("📥 BUSCANDO JOGOS:", today);
 
-    const response = await axios.get(
-      https://v3.football.api-sports.io/fixtures?date=${today},
-      {
-        headers: {
-          "x-apisports-key": API_KEY,
-        },
-      }
-    );
+    const url = https://v3.football.api-sports.io/fixtures?date=${today};
+
+const response = await axios.get(url, {
+  headers: {
+    "x-apisports-key": API_KEY,
+  },
+  timeout: 10000,
+});
 
     const games = response.data.response;
 
@@ -53,84 +51,67 @@ async function fetchAndInsertGames() {
         status: game.fixture.status.short,
       };
 
-      const { error } = await supabase
+      await supabase
         .from("games")
         .upsert([gameData], { onConflict: "api_id" });
-
-      if (error) console.error("Erro ao inserir jogo:", error);
     }
 
     console.log("✅ Jogos atualizados");
   } catch (err) {
-    console.log("Erro:", err.message);
+    console.error("Erro ao buscar jogos:", err.message);
   }
 }
 
 // ===================== FUNÇÃO PALPITES =====================
 async function generatePredictions() {
-  console.log("🤖 GERANDO PALPITES");
+  try {
+    console.log("🤖 GERANDO PALPITES");
 
-  const { data: games, error } = await supabase
-    .from("games")
-    .select("*")
-    .eq("status", "NS")
-    .order("match_date", { ascending: true })
-    .limit(20);
+    const { data: games } = await supabase
+      .from("games")
+      .select("*")
+      .eq("status", "NS")
+      .limit(20);
 
-  if (error || !games) return;
+    if (!games) return;
 
-  for (let game of games) {
-    const { data: existing } = await supabase
-      .from("predictions")
-      .select("id")
-      .eq("game_id", game.id)
-      .limit(1);
+    for (let game of games) {
+      const { data: existing } = await supabase
+        .from("predictions")
+        .select("id")
+        .eq("game_id", game.id)
+        .limit(1);
 
-    if (existing && existing.length > 0) {
-      console.log("⚠️ Já existe palpite:", game.home_team, "vs", game.away_team);
-      continue;
+      if (existing && existing.length > 0) continue;
+
+      const probability = 0.6 + Math.random() * 0.3;
+
+      const prediction = {
+        game_id: game.id,
+        market: "BTTS",
+        probability,
+        odds: 1.6 + (1 - probability),
+        confidence: probability > 0.72 ? "high" : "medium",
+        is_premium: probability > 0.75
+      };
+
+      await supabase
+        .from("predictions")
+        .upsert([prediction], { onConflict: ["game_id", "market"] });
     }
 
-    const goalTrend = Math.random();
-
-    let market;
-    let probability;
-
-    if (goalTrend > 0.65) {
-      market = "OVER_2.5";
-      probability = 0.7 + Math.random() * 0.2;
-    } else if (goalTrend < 0.35) {
-      market = "UNDER_2.5";
-      probability = 0.65 + Math.random() * 0.15;
-    } else {
-      market = "BTTS";
-      probability = 0.6 + Math.random() * 0.2;
-    }
-
-    const odds = 1.6 + (1 - probability);
-    const confidence = probability > 0.72 ? "high" : "medium";
-    const is_premium = probability > 0.75;
-
-    const prediction = {
-      game_id: game.id,
-      market,
-      probability,
-      odds,
-      confidence,
-      is_premium
-    };
-
-    const { error: insertError } = await supabase
-      .from("predictions")
-      .upsert([prediction], { onConflict: ["game_id", "market"] });
-
-    if (insertError) console.error("Erro ao inserir palpite:", insertError);
+    console.log("🔥 PALPITES FINALIZADOS");
+  } catch (err) {
+    console.error("Erro ao gerar palpites:", err.message);
   }
-
-  console.log("🔥 PALPITES FINALIZADOS");
 }
 
 // ===================== ROTAS =====================
+
+// HEALTH CHECK (IMPORTANTE PRO RENDER)
+app.get("/", (req, res) => {
+  res.send("API ONLINE 🚀");
+});
 
 // TODOS
 app.get("/predictions", async (req, res) => {
@@ -151,9 +132,7 @@ app.get("/predictions/free", async (req, res) => {
     .from("predictions")
     .select(", games()")
     .eq("is_premium", false)
-    .gte("probability", 0.65)
     .gte("games.match_date", now)
-    .order("probability", { ascending: false })
     .limit(5);
 
   if (error) return res.status(500).json(error);
@@ -162,52 +141,21 @@ app.get("/predictions/free", async (req, res) => {
 
 // VIP
 app.get("/predictions/vip", async (req, res) => {
-  try {
-    const token = (req.headers.authorization || req.query.token || "")
-      .toString()
-      .trim()
-      .toUpperCase();
+  const token = (req.headers.authorization || req.query.token || "")
+    .toString()
+    .trim();
 
-    const VIP_CODE = "BETPULSE2026";
-
-    console.log("🔐 Token recebido:", token);
-
-    if (token !== VIP_CODE) {
-      return res.status(403).json({ error: "Acesso negado" });
-    }
-
-    const { data, error } = await supabase
-      .from("predictions")
-      .select(", games()")
-      .eq("is_premium", true)
-      .order("probability", { ascending: false });
-
-    if (error) return res.status(500).json(error);
-
-    res.json(data);
-
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Erro interno" });
+  if (token !== "BETPULSE2026") {
+    return res.status(403).json({ error: "Acesso negado" });
   }
-});
 
-// ALTA PROBABILIDADE
-app.get("/predictions/high", async (req, res) => {
   const { data, error } = await supabase
     .from("predictions")
     .select(", games()")
-    .gte("probability", 0.7)
-    .order("probability", { ascending: false });
+    .eq("is_premium", true);
 
   if (error) return res.status(500).json(error);
   res.json(data);
-});
-
-// DEBUG VIP
-app.get("/test-vip", (req, res) => {
-  const token = req.headers.authorization;
-  res.json({ recebido: token });
 });
 
 // JOGOS
@@ -221,17 +169,15 @@ app.get("/games", async (req, res) => {
   res.json(data);
 });
 
-// ===================== START =====================
-async function start() {
-  await fetchAndInsertGames();
-  await generatePredictions();
-}
-
-start();
-
 // ===================== SERVER =====================
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
   console.log(🚀 API rodando na porta ${PORT});
 });
+
+// ===================== START (SEM QUEBRAR DEPLOY) =====================
+setTimeout(() => {
+  fetchAndInsertGames();
+  generatePredictions();
+}, 3000);
