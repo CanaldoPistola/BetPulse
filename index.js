@@ -27,12 +27,12 @@ async function fetchAndInsertGames() {
 
     const url = https://v3.football.api-sports.io/fixtures?date=${today};
 
-const response = await axios.get(url, {
-  headers: {
-    "x-apisports-key": API_KEY,
-  },
-  timeout: 10000,
-});
+    const response = await axios.get(url, {
+      headers: {
+        "x-apisports-key": API_KEY,
+      },
+      timeout: 10000,
+    });
 
     const games = response.data.response;
 
@@ -92,7 +92,7 @@ async function generatePredictions() {
         probability,
         odds: 1.6 + (1 - probability),
         confidence: probability > 0.72 ? "high" : "medium",
-        is_premium: probability > 0.75
+        is_premium: probability > 0.75,
       };
 
       await supabase
@@ -108,7 +108,7 @@ async function generatePredictions() {
 
 // ===================== ROTAS =====================
 
-// HEALTH CHECK (IMPORTANTE PRO RENDER)
+// HEALTH CHECK
 app.get("/", (req, res) => {
   res.send("API ONLINE 🚀");
 });
@@ -133,6 +133,7 @@ app.get("/predictions/free", async (req, res) => {
     .select(", games()")
     .eq("is_premium", false)
     .gte("games.match_date", now)
+    .order("probability", { ascending: false })
     .limit(5);
 
   if (error) return res.status(500).json(error);
@@ -143,7 +144,8 @@ app.get("/predictions/free", async (req, res) => {
 app.get("/predictions/vip", async (req, res) => {
   const token = (req.headers.authorization || req.query.token || "")
     .toString()
-    .trim();
+    .trim()
+    .toUpperCase();
 
   if (token !== "BETPULSE2026") {
     return res.status(403).json({ error: "Acesso negado" });
@@ -152,7 +154,8 @@ app.get("/predictions/vip", async (req, res) => {
   const { data, error } = await supabase
     .from("predictions")
     .select(", games()")
-    .eq("is_premium", true);
+    .eq("is_premium", true)
+    .order("probability", { ascending: false });
 
   if (error) return res.status(500).json(error);
   res.json(data);
@@ -176,7 +179,7 @@ app.listen(PORT, () => {
   console.log(🚀 API rodando na porta ${PORT});
 });
 
-// ===================== START (SEM QUEBRAR DEPLOY) =====================
+// ===================== START =====================
 setTimeout(() => {
   fetchAndInsertGames();
   generatePredictions();
