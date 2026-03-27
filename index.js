@@ -18,7 +18,11 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 const app = express();
 
 // ===================== DATA =====================
-const today = new Date().toISOString().split("T")[0];
+const today = new Date(
+  new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" })
+)
+  .toISOString()
+  .split("T")[0];
 
 // ===================== FUNÇÃO JOGOS =====================
 async function fetchAndInsertGames() {
