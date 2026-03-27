@@ -25,7 +25,7 @@ async function fetchAndInsertGames() {
   try {
     console.log("📥 BUSCANDO JOGOS:", today);
 
-    const url = "https://v3.football.api-sports.io/fixtures?date=" + today;
+    const url = https://v3.football.api-sports.io/fixtures?date=${today};
 
     const response = await axios.get(url, {
       headers: {
@@ -108,7 +108,7 @@ async function generatePredictions() {
 
 // ===================== ROTAS =====================
 
-// HEALTH CHECK
+// HEALTH CHECK (IMPORTANTE PRO RENDER)
 app.get("/", (req, res) => {
   res.send("API ONLINE 🚀");
 });
@@ -133,7 +133,6 @@ app.get("/predictions/free", async (req, res) => {
     .select(", games()")
     .eq("is_premium", false)
     .gte("games.match_date", now)
-    .order("probability", { ascending: false })
     .limit(5);
 
   if (error) return res.status(500).json(error);
@@ -154,33 +153,10 @@ app.get("/predictions/vip", async (req, res) => {
   const { data, error } = await supabase
     .from("predictions")
     .select(", games()")
-    .eq("is_premium", true)
-    .order("probability", { ascending: false });
+    .eq("is_premium", true);
 
   if (error) return res.status(500).json(error);
   res.json(data);
 });
 
-// JOGOS
-app.get("/games", async (req, res) => {
-  const { data, error } = await supabase
-    .from("games")
-    .select("*")
-    .limit(50);
-
-  if (error) return res.status(500).json(error);
-  res.json(data);
-});
-
-// ===================== SERVER =====================
-const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => {
-  console.log(🚀 API rodando na porta ${PORT});
-});
-
-// ===================== START =====================
-setTimeout(() => {
-  fetchAndInsertGames();
-  generatePredictions();
-}, 3000);
+// JOG
