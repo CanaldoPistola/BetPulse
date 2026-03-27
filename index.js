@@ -6,7 +6,7 @@ const express = require("express");
 // ===================== CONFIG =====================
 console.log("INICIANDO SCRIPT...");
 
-// 🔐 ENV (OBRIGATÓRIO NO RENDER)
+// 🔐 ENV (Render)
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_KEY;
 const API_KEY = process.env.API_KEY;
@@ -108,7 +108,7 @@ async function generatePredictions() {
 
 // ===================== ROTAS =====================
 
-// HEALTH CHECK (IMPORTANTE PRO RENDER)
+// HEALTH CHECK
 app.get("/", (req, res) => {
   res.send("API ONLINE 🚀");
 });
@@ -143,8 +143,7 @@ app.get("/predictions/free", async (req, res) => {
 app.get("/predictions/vip", async (req, res) => {
   const token = (req.headers.authorization || req.query.token || "")
     .toString()
-    .trim()
-    .toUpperCase();
+    .trim();
 
   if (token !== "BETPULSE2026") {
     return res.status(403).json({ error: "Acesso negado" });
@@ -159,4 +158,26 @@ app.get("/predictions/vip", async (req, res) => {
   res.json(data);
 });
 
-// JOG
+// JOGOS
+app.get("/games", async (req, res) => {
+  const { data, error } = await supabase
+    .from("games")
+    .select("*")
+    .limit(50);
+
+  if (error) return res.status(500).json(error);
+  res.json(data);
+});
+
+// ===================== SERVER =====================
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log(🚀 API rodando na porta ${PORT});
+});
+
+// ===================== START =====================
+setTimeout(() => {
+  fetchAndInsertGames();
+  generatePredictions();
+}, 3000);
