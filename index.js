@@ -47,13 +47,18 @@ async function fetchAndInsertGames() {
 
     for (let game of games) {
       const gameData = {
-        api_id: game.fixture.id,
-        match_date: game.fixture.date,
-        home_team: game.teams.home.name,
-        away_team: game.teams.away.name,
-        league: game.league.name,
-        status: game.fixture.status.short,
-      };
+  api_id: game.fixture.id,
+  match_date: game.fixture.date,
+  home_team: game.teams.home.name,
+  away_team: game.teams.away.name,
+
+  // 👇 NOVO (ESCUDOS)
+  home_logo: game.teams.home.logo,
+  away_logo: game.teams.away.logo,
+
+  league: game.league.name,
+  status: game.fixture.status.short,
+};
 
       await supabase
         .from("games")
