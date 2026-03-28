@@ -90,7 +90,7 @@ async function generatePredictions() {
   "OVER_1.5",
   "MATCH_WIN_HOME",
   "MATCH_WIN_AWAY",
-  "DRAW",
+  "UNDER_1.5",
   "HT_OVER_0.5"
 ];
 
@@ -142,7 +142,7 @@ app.get("/", (req, res) => {
 app.get("/predictions", async (req, res) => {
   const { data, error } = await supabase
     .from("predictions")
-    .select("*, games(*)")
+    .select(", games()")
     .order("probability", { ascending: false });
 
   if (error) return res.status(500).json(error);
@@ -151,13 +151,14 @@ app.get("/predictions", async (req, res) => {
 
 // FREE
 app.get("/predictions/free", async (req, res) => {
-  const now = new Date().toISOString();
+  const today = new Date().toISOString();
 
   const { data, error } = await supabase
     .from("predictions")
-    .select("*, games(*)")
+    .select(", games()")
     .eq("is_premium", false)
-    .gte("games.match_date", now)
+    .gte("games.match_date", today)
+    .order("probability", { ascending: false })
     .limit(5);
 
   if (error) return res.status(500).json(error);
@@ -174,10 +175,15 @@ app.get("/predictions/vip", async (req, res) => {
     return res.status(403).json({ error: "Acesso negado" });
   }
 
+  const today = new Date().toISOString();
+
   const { data, error } = await supabase
     .from("predictions")
-    .select("*, games(*)")
-    .eq("is_premium", true);
+    .select(", games()")
+    .eq("is_premium", true)
+    .gte("games.match_date", today)
+    .order("probability", { ascending: false })
+    .limit(15);
 
   if (error) return res.status(500).json(error);
   res.json(data);
@@ -185,9 +191,13 @@ app.get("/predictions/vip", async (req, res) => {
 
 // JOGOS
 app.get("/games", async (req, res) => {
+  const today = new Date().toISOString();
+
   const { data, error } = await supabase
     .from("games")
     .select("*")
+    .gte("match_date", today)
+    .order("match_date", { ascending: true })
     .limit(50);
 
   if (error) return res.status(500).json(error);
