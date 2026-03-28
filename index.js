@@ -181,7 +181,28 @@ app.listen(PORT, () => {
 });
 
 // ===================== START =====================
-setTimeout(() => {
-  fetchAndInsertGames();
-  generatePredictions();
+setTimeout(async () => {
+  console.log("🚀 Iniciando ciclo completo...");
+
+  await cleanOldGames();
+  await fetchAndInsertGames();
+  await generatePredictions();
+
 }, 3000);
+
+// ===================== LIMPAR DADOS ANTIGOS =====================
+async function cleanOldGames() {
+  const now = new Date().toISOString();
+
+  await supabase
+    .from("games")
+    .delete()
+    .lt("match_date", now);
+
+  await supabase
+    .from("predictions")
+    .delete()
+    .lt("created_at", now);
+
+  console.log("🧹 Dados antigos removidos");
+}
