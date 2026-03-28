@@ -72,38 +72,54 @@ async function generatePredictions() {
     console.log("🤖 GERANDO PALPITES");
 
     const { data: games } = await supabase
-      .from("games")
-      .select("*")
-      .eq("status", "NS")
-      .limit(20);
+  .from("games")
+  .select("*")
+  .limit(20);
 
     if (!games) return;
 
-    for (let game of games) {
-      const { data: existing } = await supabase
-        .from("predictions")
-        .select("id")
-        .eq("game_id", game.id)
-        .limit(1);
+   const markets = [
+  "BTTS",
+  "OVER_2.5",
+  "UNDER_2.5",
+  "OVER_1.5",
+  "MATCH_WIN_HOME",
+  "MATCH_WIN_AWAY",
+  "DRAW",
+  "HT_OVER_0.5"
+];
 
-      if (existing && existing.length > 0) continue;
+for (let game of games) {
 
-      const probability = 0.6 + Math.random() * 0.3;
+  for (let market of markets) {
 
-      const prediction = {
-        game_id: game.id,
-        market: "BTTS",
-        probability,
-        odds: 1.6 + (1 - probability),
-        confidence: probability > 0.72 ? "high" : "medium",
-        is_premium: probability > 0.75,
-      };
+    const { data: existing } = await supabase
+      .from("predictions")
+      .select("id")
+      .eq("game_id", game.id)
+      .eq("market", market)
+      .limit(1);
 
-      await supabase
-        .from("predictions")
-        .upsert([prediction], { onConflict: ["game_id", "market"] });
-    }
+    if (existing && existing.length > 0) continue;
 
+    const probability = 0.55 + Math.random() * 0.4;
+
+    if (probability < 0.65) continue;
+
+    const prediction = {
+      game_id: game.id,
+      market,
+      probability,
+      odds: 1.5 + (1 - probability),
+      confidence: probability > 0.75 ? "high" : "medium",
+      is_premium: probability > 0.78
+    };
+
+    await supabase
+      .from("predictions")
+      .insert([prediction]);
+  }
+}
     console.log("🔥 PALPITES FINALIZADOS");
   } catch (err) {
     console.error("Erro ao gerar palpites:", err.message);
