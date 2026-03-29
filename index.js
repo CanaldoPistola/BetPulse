@@ -29,7 +29,7 @@ async function fetchAndInsertGames() {
   try {
     console.log("📥 BUSCANDO JOGOS:", today);
 
-    const url = `https://v3.football.api-sports.io/fixtures?date=${today}`;
+    const url = https://v3.football.api-sports.io/fixtures?date=${today};
 
     const response = await axios.get(url, {
       headers: {
@@ -45,24 +45,25 @@ async function fetchAndInsertGames() {
       return;
     }
 
-    for (let game of games) {
+    for (const game of games) {
       const gameData = {
-  api_id: game.fixture.id,
-  match_date: game.fixture.date,
-  home_team: game.teams.home.name,
-  away_team: game.teams.away.name,
+        api_id: game.fixture.id,
+        match_date: game.fixture.date,
+        home_team: game.teams.home.name,
+        away_team: game.teams.away.name,
+        home_logo: game.teams.home.logo || null,
+        away_logo: game.teams.away.logo || null,
+        league: game.league.name,
+        status: game.fixture.status.short,
+      };
 
-  // 👇 NOVO (ESCUDOS)
-  home_logo: game.teams.home.logo,
-  away_logo: game.teams.away.logo,
-
-  league: game.league.name,
-  status: game.fixture.status.short,
-};
-
-      await supabase
+      const { error } = await supabase
         .from("games")
         .upsert([gameData], { onConflict: "api_id" });
+
+      if (error) {
+        console.error("Erro ao salvar jogo:", error.message);
+      }
     }
 
     console.log("✅ Jogos atualizados");
