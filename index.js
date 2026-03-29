@@ -151,13 +151,10 @@ app.get("/predictions", async (req, res) => {
 
 // FREE
 app.get("/predictions/free", async (req, res) => {
-  const today = new Date().toISOString().split("T")[0];
-
   const { data, error } = await supabase
     .from("predictions")
     .select(", games()")
     .eq("is_premium", false)
-    .gte("games.match_date", today + "T00:00:00")
     .order("probability", { ascending: false })
     .limit(5);
 
@@ -175,13 +172,10 @@ app.get("/predictions/vip", async (req, res) => {
     return res.status(403).json({ error: "Acesso negado" });
   }
 
-  const today = new Date().toISOString().split("T")[0];
-
   const { data, error } = await supabase
     .from("predictions")
     .select(", games()")
     .eq("is_premium", true)
-    .gte("games.match_date", today + "T00:00:00")
     .order("probability", { ascending: false })
     .limit(15);
 
