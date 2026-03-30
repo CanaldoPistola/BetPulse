@@ -80,7 +80,7 @@ async function generatePredictions() {
     const { data: games } = await supabase
       .from("games")
       .select("*")
-      .limit(10); // 🔥 REDUZIDO (ANTES ERA 20)
+      .limit(10);
 
     if (!games) return;
 
@@ -95,8 +95,8 @@ async function generatePredictions() {
       "HT_OVER_0.5"
     ];
 
-    for (let game of games) {
-      for (let market of markets) {
+    for (const game of games) {
+      for (const market of markets) {
 
         const { data: existing } = await supabase
           .from("predictions")
@@ -109,16 +109,15 @@ async function generatePredictions() {
 
         const probability = 0.55 + Math.random() * 0.4;
 
-        // 🔥 FILTRO MAIS FORTE
         if (probability < 0.72) continue;
 
         const prediction = {
           game_id: game.id,
           market,
           probability,
-          odds: Number((1.5 + (1 - probability)).toFixed(2)), // 🔥 odds mais limpas
+          odds: Number((1.5 + (1 - probability)).toFixed(2)),
           confidence: probability > 0.80 ? "high" : "medium",
-          is_premium: probability > 0.80 // 🔥 VIP MAIS SELETIVO
+          is_premium: probability > 0.80
         };
 
         await supabase
@@ -131,9 +130,6 @@ async function generatePredictions() {
   } catch (err) {
     console.error("Erro ao gerar palpites:", err.message);
   }
-}
-}
-
 // ===================== ROTAS =====================
 
 // HEALTH CHECK
