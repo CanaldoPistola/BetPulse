@@ -78,58 +78,60 @@ async function generatePredictions() {
     console.log("🤖 GERANDO PALPITES");
 
     const { data: games } = await supabase
-  .from("games")
-  .select("*")
-  .limit(20);
+      .from("games")
+      .select("*")
+      .limit(10); // 🔥 REDUZIDO (ANTES ERA 20)
 
     if (!games) return;
 
-   const markets = [
-  "BTTS",
-  "OVER_2.5",
-  "UNDER_2.5",
-  "OVER_1.5",
-  "MATCH_WIN_HOME",
-  "MATCH_WIN_AWAY",
-  "UNDER_1.5",
-  "HT_OVER_0.5"
-];
+    const markets = [
+      "BTTS",
+      "OVER_2.5",
+      "UNDER_2.5",
+      "OVER_1.5",
+      "MATCH_WIN_HOME",
+      "MATCH_WIN_AWAY",
+      "UNDER_1.5",
+      "HT_OVER_0.5"
+    ];
 
-for (let game of games) {
+    for (let game of games) {
+      for (let market of markets) {
 
-  for (let market of markets) {
+        const { data: existing } = await supabase
+          .from("predictions")
+          .select("id")
+          .eq("game_id", game.id)
+          .eq("market", market)
+          .limit(1);
 
-    const { data: existing } = await supabase
-      .from("predictions")
-      .select("id")
-      .eq("game_id", game.id)
-      .eq("market", market)
-      .limit(1);
+        if (existing && existing.length > 0) continue;
 
-    if (existing && existing.length > 0) continue;
+        const probability = 0.55 + Math.random() * 0.4;
 
-    const probability = 0.55 + Math.random() * 0.4;
+        // 🔥 FILTRO MAIS FORTE
+        if (probability < 0.72) continue;
 
-    if (probability < 0.65) continue;
+        const prediction = {
+          game_id: game.id,
+          market,
+          probability,
+          odds: Number((1.5 + (1 - probability)).toFixed(2)), // 🔥 odds mais limpas
+          confidence: probability > 0.80 ? "high" : "medium",
+          is_premium: probability > 0.80 // 🔥 VIP MAIS SELETIVO
+        };
 
-    const prediction = {
-      game_id: game.id,
-      market,
-      probability,
-      odds: 1.5 + (1 - probability),
-      confidence: probability > 0.75 ? "high" : "medium",
-      is_premium: probability > 0.78
-    };
+        await supabase
+          .from("predictions")
+          .insert([prediction]);
+      }
+    }
 
-    await supabase
-      .from("predictions")
-      .insert([prediction]);
-  }
-}
     console.log("🔥 PALPITES FINALIZADOS");
   } catch (err) {
     console.error("Erro ao gerar palpites:", err.message);
   }
+}
 }
 
 // ===================== ROTAS =====================
