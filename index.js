@@ -143,7 +143,7 @@ app.get("/", (req, res) => {
 app.get("/predictions", async (req, res) => {
   const { data, error } = await supabase
     .from("predictions")
-    .select("*, games(*)")
+    .select("*, games!fk_game(*)")
     .order("probability", { ascending: false });
 
   if (error) return res.status(500).json(error);
@@ -154,7 +154,7 @@ app.get("/predictions", async (req, res) => {
 app.get("/predictions/free", async (req, res) => {
   const { data, error } = await supabase
     .from("predictions")
-    .select("*, games(*)")
+    .select("*, games!fk_game(*)")
     .eq("is_premium", false)
     .order("probability", { ascending: false })
     .limit(5);
@@ -175,7 +175,7 @@ app.get("/predictions/vip", async (req, res) => {
 
   const { data, error } = await supabase
     .from("predictions")
-    .select("*, games(*)")
+    .select("*, games!fk_game(*)")
     .eq("is_premium", true)
     .order("probability", { ascending: false })
     .limit(15);
