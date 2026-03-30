@@ -127,9 +127,11 @@ async function generatePredictions() {
     }
 
     console.log("🔥 PALPITES FINALIZADOS");
-  } catch (err) {
+  }} catch (err) {
     console.error("Erro ao gerar palpites:", err.message);
   }
+} // ✅ FECHANDO A FUNÇÃO generatePredictions
+
 // ===================== ROTAS =====================
 
 // HEALTH CHECK
