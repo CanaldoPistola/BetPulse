@@ -46,6 +46,26 @@ async function fetchAndInsertGames() {
     }
 
     for (const game of games) {
+      for (const game of games) {
+
+  const leagueName = game.league.name.toLowerCase();
+  const homeTeam = game.teams.home.name.toLowerCase();
+  const awayTeam = game.teams.away.name.toLowerCase();
+
+  // 🚫 FILTRO: remover juvenil e feminino
+  if (
+    leagueName.includes("u17") ||
+    leagueName.includes("u19") ||
+    leagueName.includes("u20") ||
+    leagueName.includes("u21") ||
+    leagueName.includes("youth") ||
+    leagueName.includes("reserves") ||
+    leagueName.includes("women") ||
+    homeTeam.includes("women") ||
+    awayTeam.includes("women")
+  ) {
+    continue; // pula esse jogo
+  }ma
       const gameData = {
         api_id: game.fixture.id,
         match_date: game.fixture.date,
@@ -223,7 +243,7 @@ async function cleanOldGames() {
   await supabase
     .from("games")
     .delete()
-    .lt("match_date", now);
+    .lt("match_date", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
 
   await supabase
     .from("predictions")
