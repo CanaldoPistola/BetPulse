@@ -47,24 +47,26 @@ async function fetchAndInsertGames() {
 
     for (const game of games) {
 
-      const leagueName = game.league.name.toLowerCase();
-      const homeTeam = game.teams.home.name.toLowerCase();
-      const awayTeam = game.teams.away.name.toLowerCase();
+  // 🔥 FILTRO INTELIGENTE (NOVO)
+  const text = (
+    game.league.name +
+    game.teams.home.name +
+    game.teams.away.name
+  ).toLowerCase();
 
-      // 🚫 FILTRO
-      if (
-        leagueName.includes("u17") ||
-        leagueName.includes("u19") ||
-        leagueName.includes("u20") ||
-        leagueName.includes("u21") ||
-        leagueName.includes("youth") ||
-        leagueName.includes("reserves") ||
-        leagueName.includes("women") ||
-        homeTeam.includes("women") ||
-        awayTeam.includes("women")
-      ) {
-        continue;
-      }
+  if (
+    text.includes("u17") ||
+    text.includes("u19") ||
+    text.includes("u20") ||
+    text.includes("u21") ||
+    text.includes("u23") ||
+    text.includes("youth") ||
+    text.includes("reserves") ||
+    text.includes("women") ||
+    text.includes("femin")
+  ) {
+    continue;
+  }
 
       const gameData = {
         api_id: game.fixture.id,
