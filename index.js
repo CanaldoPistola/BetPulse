@@ -29,7 +29,7 @@ async function fetchAndInsertGames() {
   try {
     console.log("📥 BUSCANDO JOGOS:", today);
 
-    const url = `https://v3.football.api-sports.io/fixtures?date=${today}`;
+  const url = `https://v3.football.api-sports.io/fixtures?date=${today}`;
 
     const response = await axios.get(url, {
       headers: {
@@ -46,26 +46,26 @@ async function fetchAndInsertGames() {
     }
 
     for (const game of games) {
-      for (const game of games) {
 
-  const leagueName = game.league.name.toLowerCase();
-  const homeTeam = game.teams.home.name.toLowerCase();
-  const awayTeam = game.teams.away.name.toLowerCase();
+      const leagueName = game.league.name.toLowerCase();
+      const homeTeam = game.teams.home.name.toLowerCase();
+      const awayTeam = game.teams.away.name.toLowerCase();
 
-  // 🚫 FILTRO: remover juvenil e feminino
-  if (
-    leagueName.includes("u17") ||
-    leagueName.includes("u19") ||
-    leagueName.includes("u20") ||
-    leagueName.includes("u21") ||
-    leagueName.includes("youth") ||
-    leagueName.includes("reserves") ||
-    leagueName.includes("women") ||
-    homeTeam.includes("women") ||
-    awayTeam.includes("women")
-  ) {
-    continue; // pula esse jogo
-  }ma
+      // 🚫 FILTRO
+      if (
+        leagueName.includes("u17") ||
+        leagueName.includes("u19") ||
+        leagueName.includes("u20") ||
+        leagueName.includes("u21") ||
+        leagueName.includes("youth") ||
+        leagueName.includes("reserves") ||
+        leagueName.includes("women") ||
+        homeTeam.includes("women") ||
+        awayTeam.includes("women")
+      ) {
+        continue;
+      }
+
       const gameData = {
         api_id: game.fixture.id,
         match_date: game.fixture.date,
@@ -87,11 +87,11 @@ async function fetchAndInsertGames() {
     }
 
     console.log("✅ Jogos atualizados");
+
   } catch (err) {
     console.error("Erro ao buscar jogos:", err.message);
   }
 }
-
 // ===================== FUNÇÃO PALPITES =====================
 async function generatePredictions() {
   try {
