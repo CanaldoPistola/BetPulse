@@ -2,6 +2,8 @@
 const axios = require("axios");
 const { createClient } = require("@supabase/supabase-js");
 const express = require("express");
+const Stripe = require("stripe");
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 // ===================== CONFIG =====================
 console.log("INICIANDO SCRIPT...");
@@ -219,6 +221,30 @@ app.get("/games", async (req, res) => {
 
   if (error) return res.status(500).json(error);
   res.json(data);
+});
+
+// ===================== STRIPE CHECKOUT =====================
+app.get("/create-checkout-session", async (req, res) => {
+  try {
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ["card"],
+      mode: "subscription",
+      line_items: [
+        {
+          price: "price_1TGj6a8QWoA2KiD8gu620noY",
+          quantity: 1,
+        },
+      ],
+      success_url: "https://betpulse-2.onrender.com",
+      cancel_url: "https://betpulse-2.onrender.com",
+    });
+
+    res.json({ url: session.url });
+
+  } catch (err) {
+    console.error("Erro Stripe:", err.message);
+    res.status(500).json({ error: "Erro ao criar checkout" });
+  }
 });
 
 // ===================== SERVER =====================
