@@ -21,6 +21,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 const app = express();
 
 app.use(cors());
+app.use(express.json());
 
 // ===================== DATA =====================
 const today = new Date(
@@ -262,21 +263,20 @@ app.post("/webhook", express.raw({ type: "application/json" }), async (req, res)
     );
 
     if (event.type === "checkout.session.completed") {
-  console.log("💰 PAGAMENTO CONFIRMADO");
-
-  const session = event.data.object;
-
-  await supabase
-  .from("users")
-  .upsert(
-    {
-      email: session.customer_email,
-      is_vip: true,
-    },
-    { onConflict: "email" }
-  );
+      console.log("💰 PAGAMENTO CONFIRMADO");
 
       const session = event.data.object;
+
+      await supabase
+        .from("users")
+        .upsert(
+          {
+            email: session.customer_email,
+            is_vip: true,
+          },
+          { onConflict: "email" }
+        );
+
       console.log("Cliente:", session.customer_email);
     }
 
@@ -284,11 +284,9 @@ app.post("/webhook", express.raw({ type: "application/json" }), async (req, res)
 
   } catch (err) {
     console.error("❌ Erro webhook:", err.message);
-    res.status(400).send(`Webhook Error: ${err.message}`);
+    res.status(400).send(Webhook Error: ${err.message});
   }
 });
-
-app.use(express.json());
 
 // ===================== SERVER =====================
 const PORT = process.env.PORT || 3000;
