@@ -21,7 +21,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 const app = express();
 
 app.use(cors());
-app.use(express.json());
+
 
 // ===================== DATA =====================
 const today = new Date(
@@ -284,9 +284,10 @@ app.post("/webhook", express.raw({ type: "application/json" }), async (req, res)
 
   } catch (err) {
     console.error("❌ Erro webhook:", err.message);
-    res.status(400).send(Webhook Error: ${err.message});
+    res.status(400).send(`Webhook Error: ${err.message}`);
   }
 });
+app.use(express.json());
 
 // ===================== SERVER =====================
 const PORT = process.env.PORT || 3000;
