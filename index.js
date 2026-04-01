@@ -262,7 +262,19 @@ app.post("/webhook", express.raw({ type: "application/json" }), async (req, res)
     );
 
     if (event.type === "checkout.session.completed") {
-      console.log("💰 PAGAMENTO CONFIRMADO");
+  console.log("💰 PAGAMENTO CONFIRMADO");
+
+  const session = event.data.object;
+
+  await supabase
+  .from("users")
+  .upsert(
+    {
+      email: session.customer_email,
+      is_vip: true,
+    },
+    { onConflict: "email" }
+  );
 
       const session = event.data.object;
       console.log("Cliente:", session.customer_email);
