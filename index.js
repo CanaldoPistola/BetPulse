@@ -276,12 +276,16 @@ if (!email) {
   return res.json({ received: true });
 }
 
+const expiresAt = new Date();
+expiresAt.setDate(expiresAt.getDate() + 30); // 30 dias
+
 const { error } = await supabase
   .from("users")
   .upsert(
     {
       email: email,
       is_vip: true,
+      expires_at: expiresAt.toISOString(),
     },
     { onConflict: "email" }
   );
