@@ -267,15 +267,30 @@ app.post("/webhook", express.raw({ type: "application/json" }), async (req, res)
 
       const session = event.data.object;
 
-      await supabase
-        .from("users")
-        .upsert(
-          {
-            email: session.customer_email,
-            is_vip: true,
-          },
-          { onConflict: "email" }
-        );
+const email = session.customer_details?.email || session.customer_email;
+
+console.log("EMAIL CAPTURADO:", email);
+
+if (!email) {
+  console.error("❌ Email não encontrado no pagamento");
+  return res.json({ received: true });
+}
+
+const { error } = await supabase
+  .from("users")
+  .upsert(
+    {
+      email: email,
+      is_vip: true,
+    },
+    { onConflict: "email" }
+  );
+
+if (error) {
+  console.error("❌ ERRO AO SALVAR:", error.message);
+} else {
+  console.log("✅ USUÁRIO SALVO COMO VIP");
+}
 
       console.log("Cliente:", session.customer_email);
     }
