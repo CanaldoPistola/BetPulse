@@ -2,6 +2,7 @@
 const axios = require("axios");
 const { createClient } = require("@supabase/supabase-js");
 const express = require("express");
+const cors = require("cors"); // 👈 ADICIONADO
 const Stripe = require("stripe");
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
@@ -18,6 +19,8 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ===================== EXPRESS =====================
 const app = express();
+
+app.use(cors());
 
 // ===================== DATA =====================
 const today = new Date(
