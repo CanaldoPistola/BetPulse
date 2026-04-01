@@ -247,6 +247,34 @@ app.get("/create-checkout-session", async (req, res) => {
   }
 });
 
+// ===================== STRIPE WEBHOOK =====================
+app.post("/webhook", express.raw({ type: "application/json" }), async (req, res) => {
+  const sig = req.headers["stripe-signature"];
+
+  try {
+    const event = stripe.webhooks.constructEvent(
+      req.body,
+      sig,
+      process.env.STRIPE_WEBHOOK_SECRET
+    );
+
+    if (event.type === "checkout.session.completed") {
+      console.log("💰 PAGAMENTO CONFIRMADO");
+
+      const session = event.data.object;
+      console.log("Cliente:", session.customer_email);
+    }
+
+    res.json({ received: true });
+
+  } catch (err) {
+    console.error("❌ Erro webhook:", err.message);
+    res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+});
+
+app.use(express.json());
+
 // ===================== SERVER =====================
 const PORT = process.env.PORT || 3000;
 
