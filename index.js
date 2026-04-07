@@ -233,7 +233,8 @@ app.get("/create-checkout-session", async (req, res) => {
     const session = await stripe.checkout.sessions.create({
   payment_method_types: ["card"],
   mode: "subscription",
-  customer_email: req.query.email, // 👈 ADICIONA ESSA LINHA
+  customer_email: req.query.email,
+  client_reference_id: req.query.email, // 👈 ADICIONA ESSA LINHA
       line_items: [
         {
           price: "price_1TGj6a8QWoA2KiD8gu620noY",
