@@ -39,7 +39,7 @@ async function fetchAndInsertGames() {
 
     console.log("📥 BUSCANDO JOGOS:", today);
 
-    const url = https://v3.football.api-sports.io/fixtures?date=${today};
+    const url = `https://v3.football.api-sports.io/fixtures?date=${today}`;
 
     const response = await axios.get(url, {
       headers: {
