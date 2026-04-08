@@ -24,18 +24,22 @@ app.use(cors());
 
 
 // ===================== DATA =====================
-const today = new Date(
-  new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" })
-)
-  .toISOString()
-  .split("T")[0];
+function getToday() {
+  return new Date(
+    new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" })
+  )
+    .toISOString()
+    .split("T")[0];
+}
 
 // ===================== FUNÇÃO JOGOS =====================
 async function fetchAndInsertGames() {
   try {
+    const today = getToday();
+
     console.log("📥 BUSCANDO JOGOS:", today);
 
-  const url = `https://v3.football.api-sports.io/fixtures?date=${today}`;
+    const url = https://v3.football.api-sports.io/fixtures?date=${today};
 
     const response = await axios.get(url, {
       headers: {
@@ -52,27 +56,25 @@ async function fetchAndInsertGames() {
     }
 
     for (const game of games) {
+      const text = (
+        game.league.name +
+        game.teams.home.name +
+        game.teams.away.name
+      ).toLowerCase();
 
-  // 🔥 FILTRO INTELIGENTE (NOVO)
-  const text = (
-    game.league.name +
-    game.teams.home.name +
-    game.teams.away.name
-  ).toLowerCase();
-
-  if (
-    text.includes("u17") ||
-    text.includes("u19") ||
-    text.includes("u20") ||
-    text.includes("u21") ||
-    text.includes("u23") ||
-    text.includes("youth") ||
-    text.includes("reserves") ||
-    text.includes("women") ||
-    text.includes("femin")
-  ) {
-    continue;
-  }
+      if (
+        text.includes("u17") ||
+        text.includes("u19") ||
+        text.includes("u20") ||
+        text.includes("u21") ||
+        text.includes("u23") ||
+        text.includes("youth") ||
+        text.includes("reserves") ||
+        text.includes("women") ||
+        text.includes("femin")
+      ) {
+        continue;
+      }
 
       const gameData = {
         api_id: game.fixture.id,
@@ -318,14 +320,24 @@ app.listen(PORT, () => {
 });
 
 // ===================== START =====================
-setTimeout(async () => {
-  console.log("🚀 Iniciando ciclo completo...");
+// 🚀 EXECUTA AO INICIAR
+(async () => {
+  console.log("🚀 Primeira execução...");
+
+  await cleanOldGames();
+  await fetchAndInsertGames();
+  await generatePredictions();
+})();
+
+// 🔄 EXECUTA AUTOMATICAMENTE A CADA 30 MINUTOS
+setInterval(async () => {
+  console.log("🔄 Atualizando dados automaticamente...");
 
   await cleanOldGames();
   await fetchAndInsertGames();
   await generatePredictions();
 
-}, 3000);
+}, 1000 * 60 * 30);
 
 // ===================== LIMPAR DADOS ANTIGOS =====================
 async function cleanOldGames() {
