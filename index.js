@@ -2,14 +2,13 @@
 const axios = require("axios");
 const { createClient } = require("@supabase/supabase-js");
 const express = require("express");
-const cors = require("cors"); // 👈 ADICIONADO
+const cors = require("cors");
 const Stripe = require("stripe");
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 // ===================== CONFIG =====================
 console.log("INICIANDO SCRIPT...");
 
-// 🔐 ENV (Render)
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_KEY;
 const API_KEY = process.env.API_KEY;
@@ -19,27 +18,34 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ===================== EXPRESS =====================
 const app = express();
-
 app.use(cors());
+app.use(express.json());
 
-
-// ===================== DATA =====================
-function getToday() {
+// ===================== DATA BRASIL =====================
+function getNowBR() {
   return new Date(
     new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" })
-  )
-    .toISOString()
-    .split("T")[0];
+  );
 }
 
-// ===================== FUNÇÃO JOGOS =====================
+function getTodayBR() {
+  const now = getNowBR();
+
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`; // ⚠️ CRASE
+}
+
+// ===================== BUSCAR JOGOS =====================
 async function fetchAndInsertGames() {
   try {
-    const today = getToday();
+    const today = getTodayBR();
 
     console.log("📥 BUSCANDO JOGOS:", today);
 
-    const url = `https://v3.football.api-sports.io/fixtures?date=${today}`;
+    const url = `https://v3.football.api-sports.io/fixtures?date=${today}`; // ⚠️ CRASE
 
     const response = await axios.get(url, {
       headers: {
@@ -55,7 +61,17 @@ async function fetchAndInsertGames() {
       return;
     }
 
+    const nowBR = getNowBR();
+
     for (const game of games) {
+      const gameDate = new Date(game.fixture.date);
+
+      const gameBR = new Date(
+        gameDate.toLocaleString("en-US", { timeZone: "America/Sao_Paulo" })
+      );
+
+      if (gameBR < nowBR) continue;
+
       const text = (
         game.league.name +
         game.teams.home.name +
@@ -72,9 +88,7 @@ async function fetchAndInsertGames() {
         text.includes("reserves") ||
         text.includes("women") ||
         text.includes("femin")
-      ) {
-        continue;
-      }
+      ) continue;
 
       const gameData = {
         api_id: game.fixture.id,
@@ -102,17 +116,39 @@ async function fetchAndInsertGames() {
     console.error("Erro ao buscar jogos:", err.message);
   }
 }
-// ===================== FUNÇÃO PALPITES =====================
+
+// ===================== GERAR PALPITES =====================
 async function generatePredictions() {
   try {
     console.log("🤖 GERANDO PALPITES");
 
+    const today = getTodayBR();
+
+    // 🔒 TRAVA DO DIA
+    const { data: alreadyExists } = await supabase
+      .from("predictions")
+      .select("id")
+      .gte("created_at", `${today}T00:00:00`) // ⚠️ CRASE
+      .limit(1);
+
+    if (alreadyExists && alreadyExists.length > 0) {
+      console.log("⚠️ Palpites já existem hoje");
+      return;
+    }
+
+    // 🎯 JOGOS DO DIA
     const { data: games } = await supabase
       .from("games")
       .select("*")
+      .gte("match_date", `${today}T00:00:00`) // ⚠️ CRASE
+      .lte("match_date", `${today}T23:59:59`) // ⚠️ CRASE
+      .order("match_date", { ascending: true })
       .limit(10);
 
-    if (!games) return;
+    if (!games || games.length === 0) {
+      console.log("⚠️ Nenhum jogo para hoje");
+      return;
+    }
 
     const markets = [
       "BTTS",
@@ -150,208 +186,67 @@ async function generatePredictions() {
           is_premium: probability > 0.80
         };
 
-        await supabase
-          .from("predictions")
-          .insert([prediction]);
+        await supabase.from("predictions").insert([prediction]);
       }
     }
 
-    console.log("🔥 PALPITES FINALIZADOS");
+    console.log("🔥 PALPITES FIXADOS");
+
   } catch (err) {
     console.error("Erro ao gerar palpites:", err.message);
   }
-} // ✅ FECHANDO A FUNÇÃO generatePredictions
+}
 
 // ===================== ROTAS =====================
-
-// HEALTH CHECK
 app.get("/", (req, res) => {
   res.send("API ONLINE 🚀");
 });
 
-// TODOS
-app.get("/predictions", async (req, res) => {
-  const { data, error } = await supabase
-    .from("predictions")
-    .select("*, games!fk_game(*)")
-    .order("probability", { ascending: false });
-
-  if (error) return res.status(500).json(error);
-  res.json(data);
-});
-
-// FREE
-app.get("/predictions/free", async (req, res) => {
-  const { data, error } = await supabase
-    .from("predictions")
-    .select("*, games!fk_game(*)")
-    .eq("is_premium", false)
-    .order("probability", { ascending: false })
-    .limit(5);
-
-  if (error) return res.status(500).json(error);
-  res.json(data);
-});
-
-// VIP
-app.get("/predictions/vip", async (req, res) => {
-  const token = (req.headers.authorization || req.query.token || "")
-    .toString()
-    .trim();
-
-  if (token !== "BETPULSE2026") {
-    return res.status(403).json({ error: "Acesso negado" });
-  }
-
-  const { data, error } = await supabase
-    .from("predictions")
-    .select("*, games!fk_game(*)")
-    .eq("is_premium", true)
-    .order("probability", { ascending: false })
-    .limit(15);
-
-  if (error) return res.status(500).json(error);
-  res.json(data);
-});
-
 // JOGOS
 app.get("/games", async (req, res) => {
-  const today = new Date().toISOString().split("T")[0];
+  const nowBR = getNowBR();
 
   const { data, error } = await supabase
     .from("games")
     .select("*")
-    .gte("match_date", today + "T00:00:00")
     .order("match_date", { ascending: true })
     .limit(50);
 
   if (error) return res.status(500).json(error);
-  res.json(data);
-});
 
-// ===================== STRIPE CHECKOUT =====================
-app.get("/create-checkout-session", async (req, res) => {
-  try {
-    const session = await stripe.checkout.sessions.create({
-  payment_method_types: ["card"],
-  mode: "subscription",
-  customer_email: req.query.email,
-  client_reference_id: req.query.email, // 👈 ADICIONA ESSA LINHA
-      line_items: [
-        {
-          price: "price_1TGj6a8QWoA2KiD8gu620noY",
-          quantity: 1,
-        },
-      ],
-      success_url: "https://betpulse-2.onrender.com",
-      cancel_url: "https://betpulse-2.onrender.com",
-    });
+  const filtered = data.filter(game => {
+    const gameDate = new Date(game.match_date);
 
-    res.json({ url: session.url });
-
-  } catch (err) {
-    console.error("Erro Stripe:", err.message);
-    res.status(500).json({ error: "Erro ao criar checkout" });
-  }
-});
-
-// ===================== STRIPE WEBHOOK =====================
-app.post("/webhook", express.raw({ type: "application/json" }), async (req, res) => {
-  const sig = req.headers["stripe-signature"];
-
-  try {
-    const event = stripe.webhooks.constructEvent(
-      req.body,
-      sig,
-      process.env.STRIPE_WEBHOOK_SECRET
+    const gameBR = new Date(
+      gameDate.toLocaleString("en-US", { timeZone: "America/Sao_Paulo" })
     );
 
-    if (event.type === "checkout.session.completed") {
-      console.log("💰 PAGAMENTO CONFIRMADO");
+    return gameBR > nowBR;
+  });
 
-      const session = event.data.object;
-
-const email = session.customer_details?.email || session.customer_email;
-
-console.log("EMAIL CAPTURADO:", email);
-
-if (!email) {
-  console.error("❌ Email não encontrado no pagamento");
-  return res.json({ received: true });
-}
-
-const expiresAt = new Date();
-expiresAt.setDate(expiresAt.getDate() + 30); // 30 dias
-
-const { error } = await supabase
-  .from("users")
-  .upsert(
-    {
-      email: email,
-      is_vip: true,
-      expires_at: expiresAt.toISOString(),
-    },
-    { onConflict: "email" }
-  );
-
-if (error) {
-  console.error("❌ ERRO AO SALVAR:", error.message);
-} else {
-  console.log("✅ USUÁRIO SALVO COMO VIP");
-}
-
-      console.log("Cliente:", session.customer_email);
-    }
-
-    res.json({ received: true });
-
-  } catch (err) {
-    console.error("❌ Erro webhook:", err.message);
-    res.status(400).send(`Webhook Error: ${err.message}`);
-  }
+  res.json(filtered);
 });
-app.use(express.json());
 
 // ===================== SERVER =====================
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log(`🚀 API rodando na porta ${PORT}`);
+  console.log(`🚀 API rodando na porta ${PORT}`); // ⚠️ CRASE
 });
 
 // ===================== START =====================
-// 🚀 EXECUTA AO INICIAR
 (async () => {
   console.log("🚀 Primeira execução...");
 
-  await cleanOldGames();
   await fetchAndInsertGames();
   await generatePredictions();
 })();
 
-// 🔄 EXECUTA AUTOMATICAMENTE A CADA 30 MINUTOS
+// 🔄 RODA A CADA 30 MIN (MAS NÃO ALTERA MAIS O DIA)
 setInterval(async () => {
-  console.log("🔄 Atualizando dados automaticamente...");
+  console.log("🔄 Atualizando...");
 
-  await cleanOldGames();
   await fetchAndInsertGames();
   await generatePredictions();
 
 }, 1000 * 60 * 30);
-
-// ===================== LIMPAR DADOS ANTIGOS =====================
-async function cleanOldGames() {
-  const now = new Date().toISOString();
-
-  await supabase
-    .from("games")
-    .delete()
-    .lt("match_date", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
-
-  await supabase
-    .from("predictions")
-    .delete()
-    .lt("created_at", now);
-
-  console.log("🧹 Dados antigos removidos");
-}
