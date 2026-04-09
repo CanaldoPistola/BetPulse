@@ -205,7 +205,6 @@ app.get("/", (req, res) => {
 
 // JOGOS
 app.get("/games", async (req, res) => {
-  ...
 });
 
 
