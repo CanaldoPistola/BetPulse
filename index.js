@@ -198,33 +198,65 @@ async function generatePredictions() {
 }
 
 // ===================== ROTAS =====================
+
 app.get("/", (req, res) => {
   res.send("API ONLINE 🚀");
 });
 
 // JOGOS
 app.get("/games", async (req, res) => {
-  const nowBR = getNowBR();
+  ...
+});
 
+
+// 👇 👇 👇 COLA AQUI 👇 👇 👇
+
+
+// ===================== PREDICTIONS =====================
+
+// TODOS
+app.get("/predictions", async (req, res) => {
   const { data, error } = await supabase
-    .from("games")
-    .select("*")
-    .order("match_date", { ascending: true })
-    .limit(50);
+    .from("predictions")
+    .select(", games!fk_game()")
+    .order("probability", { ascending: false });
 
   if (error) return res.status(500).json(error);
+  res.json(data);
+});
 
-  const filtered = data.filter(game => {
-    const gameDate = new Date(game.match_date);
+// FREE
+app.get("/predictions/free", async (req, res) => {
+  const { data, error } = await supabase
+    .from("predictions")
+    .select(", games!fk_game()")
+    .eq("is_premium", false)
+    .order("probability", { ascending: false })
+    .limit(5);
 
-    const gameBR = new Date(
-      gameDate.toLocaleString("en-US", { timeZone: "America/Sao_Paulo" })
-    );
+  if (error) return res.status(500).json(error);
+  res.json(data);
+});
 
-    return gameBR > nowBR;
-  });
+// VIP
+app.get("/predictions/vip", async (req, res) => {
+  const token = (req.headers.authorization || req.query.token || "")
+    .toString()
+    .trim();
 
-  res.json(filtered);
+  if (token !== "BETPULSE2026") {
+    return res.status(403).json({ error: "Acesso negado" });
+  }
+
+  const { data, error } = await supabase
+    .from("predictions")
+    .select(", games!fk_game()")
+    .eq("is_premium", true)
+    .order("probability", { ascending: false })
+    .limit(15);
+
+  if (error) return res.status(500).json(error);
+  res.json(data);
 });
 
 // ===================== SERVER =====================
